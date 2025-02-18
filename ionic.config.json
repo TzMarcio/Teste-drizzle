@@ -1,0 +1,7 @@
+{
+  "name": "Teste-PDF",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular-standalone"
+}
