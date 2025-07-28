@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1753718100540,
+      "tag": "0000_boring_gateway",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1753739305839,
+      "tag": "0001_medical_star_brand",
+      "breakpoints": true
+    }
+  ]
+}

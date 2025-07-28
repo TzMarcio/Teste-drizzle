@@ -13,5 +13,19 @@
     </ion-toolbar>
   </ion-header>
 
-  <app-explore-container name="Tab 1 page"></app-explore-container>
+  <ion-row>
+    <ion-col>
+<!--      <ion-button (click)="gerarPDF()">-->
+<!--        PDF-->
+<!--      </ion-button>-->
+<!--      <ion-button (click)="abrir()">-->
+<!--        ABRIR-->
+<!--      </ion-button>-->
+      <canvas id="pdfCanvas" style="border: 1px solid black; width: 100%; height: auto;"></canvas>
+      <iframe id="pdfFrame" src="https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" style="width: 100%; height: 500px; border: none;"></iframe>
+
+    </ion-col>
+  </ion-row>
+
+<!--  <app-explore-container name="Tab 1 page"></app-explore-container>-->
 </ion-content>

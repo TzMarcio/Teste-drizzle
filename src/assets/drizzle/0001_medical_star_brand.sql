@@ -1,0 +1,1 @@
+CREATE INDEX `teste_id` ON `user` (`id`);
