@@ -37,6 +37,7 @@
     "drizzle-kit": "^0.31.4",
     "drizzle-orm": "^0.44.3",
     "ionicons": "^7.0.0",
+    "jeep-sqlite": "^2.8.0",
     "jetifier": "^2.0.0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.10.38",
@@ -73,5 +74,8 @@
     "karma-jasmine-html-reporter": "~2.1.0",
     "typescript": "~5.6.3"
   },
-  "description": "An Ionic project"
+  "description": "An Ionic project",
+  "trustedDependencies": [
+    "@parcel/watcher"
+  ]
 }
