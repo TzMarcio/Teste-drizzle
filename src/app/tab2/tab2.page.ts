@@ -2,7 +2,7 @@ import {Component, OnInit} from '@angular/core';
 import {IonContent, IonHeader, IonTitle, IonToolbar} from '@ionic/angular/standalone';
 import {ExploreContainerComponent} from '../explore-container/explore-container.component';
 import {user} from "../core/database/schemas/user.schema";
-import {db} from "../core/database/database";
+import {database} from "../core/database/database";
 
 @Component({
   selector: 'app-tab2',
@@ -24,8 +24,10 @@ export class Tab2Page implements OnInit {
 
       setTimeout(async () => {
 
-        for(let x = 0; x < 100; x++) {
-          await db.transaction(async (tx) => {
+        await database.migration();
+
+        for(let x = 0; x < 10; x++) {
+          await database.transaction(async (tx) => {
             console.log("here")
 
             await tx.delete(user);

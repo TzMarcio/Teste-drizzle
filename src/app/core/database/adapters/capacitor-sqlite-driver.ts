@@ -1,6 +1,6 @@
-import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite';
+import {CapacitorSQLite, SQLiteConnection, SQLiteDBConnection} from '@capacitor-community/sqlite';
 
-export class CapacitorSQLiteDriver {
+export class CapacitorSqliteDriver {
   private connection: SQLiteDBConnection | null = null;
   private readonly sqlite: SQLiteConnection;
   private readonly dbName: string;
@@ -88,8 +88,18 @@ export class CapacitorSQLiteDriver {
     }
 
     try {
-      const result = await this.connection.run(query, params, transaction);
-      return result;
+
+      if(query.trim().toLowerCase().includes('begin')) {
+        return await this.connection.beginTransaction()
+      }else if(query.trim().toLowerCase().includes('commit')) {
+        return await this.connection.commitTransaction()
+      }else if(query.trim().toLowerCase().includes('rollback')) {
+        return await this.connection.rollbackTransaction();
+      }else {
+
+        return await this.connection.run(query, params, transaction);
+
+      }
     } catch (error) {
       console.error('Run failed:', query, params, error);
       throw error;

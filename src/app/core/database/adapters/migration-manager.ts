@@ -1,14 +1,10 @@
-import { drizzle } from 'drizzle-orm/sqlite-proxy';
-import { user } from "./schemas/user.schema";
-import {CapacitorSQLiteDriver} from "./capacitor-sqlite-driver";
+import {CapacitorSqliteDriver} from "./capacitor-sqlite-driver";
 
 export class MigrationManager {
-  private readonly driver: CapacitorSQLiteDriver;
-  private readonly db: ReturnType<typeof drizzle>;
+  private readonly driver: CapacitorSqliteDriver;
 
-  constructor(driver: CapacitorSQLiteDriver, drizzleDB: ReturnType<typeof drizzle>) {
+  constructor(driver: CapacitorSqliteDriver) {
     this.driver = driver;
-    this.db = drizzleDB;
   }
 
   async applyMigrations(): Promise<void> {
