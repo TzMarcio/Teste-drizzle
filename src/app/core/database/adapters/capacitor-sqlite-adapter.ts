@@ -4,8 +4,11 @@ import {DrizzleConfig} from "drizzle-orm";
 import {MigrationManager} from "./migration-manager";
 import {SqliteRemoteDatabase} from "drizzle-orm/sqlite-proxy/driver";
 
+type Listener = () => void;
+
 export declare class CapacitorSqliteRemoteDatabase<TSchema extends Record<string, unknown> = Record<string, never>> extends SqliteRemoteDatabase<TSchema> {
-  migration: () => Promise<void>;
+  onAvailiable: (callback: Listener) => void;
+  isAvailiable: boolean;
 }
 
 export function capacitorSqliteDriver(driver: CapacitorSqliteDriver, transaction: boolean): AsyncRemoteCallback {
@@ -25,20 +28,32 @@ export function capacitorSqliteDriver(driver: CapacitorSqliteDriver, transaction
   };
 }
 
-export const drizzleCapacitor = async <TSchema extends Record<string, unknown>>(db: string, migrations?: Record<string, string>, config?: DrizzleConfig<TSchema>) => {
+export const drizzleCapacitor = <TSchema extends Record<string, unknown>>(db: string, migrations?: Record<string, string>, config?: DrizzleConfig<TSchema>) => {
   const driver = new CapacitorSqliteDriver(db);
-  console.log('[drizzleCapacitor]')
-  return driver.init().then(() => {
 
-    let transaction: boolean = true;
-    const migration: MigrationManager = new MigrationManager(driver, migrations);
+  const migration: MigrationManager = new MigrationManager(driver, migrations);
 
-    const instance:SqliteRemoteDatabase<TSchema> = baseDrizzle<TSchema>(capacitorSqliteDriver(driver, transaction), undefined, config);
+  let transaction: boolean = true;
 
-    (instance as CapacitorSqliteRemoteDatabase<TSchema>).migration = migration.applyMigrations.bind(migration);
+  const instance:SqliteRemoteDatabase<TSchema> = baseDrizzle<TSchema>(capacitorSqliteDriver(driver, transaction), undefined, config);
 
-    return instance as CapacitorSqliteRemoteDatabase<TSchema>;
+  let readyListener: Listener = () => {};
 
+  (instance as CapacitorSqliteRemoteDatabase<TSchema>).onAvailiable = () => {
+    readyListener();
+  };
+
+  driver.init().then(async () => {
+    await migration.applyMigrations();
+    (instance as CapacitorSqliteRemoteDatabase<TSchema>).isAvailiable = true;
+    readyListener();
   });
+
+  (instance as CapacitorSqliteRemoteDatabase<TSchema>).onAvailiable = (callback: Listener) => {
+    readyListener = callback;
+  };
+
+  return instance as CapacitorSqliteRemoteDatabase<TSchema>;
+
 }
 
