@@ -25,16 +25,20 @@ export function capacitorSqliteDriver(driver: CapacitorSqliteDriver, transaction
   };
 }
 
-export const drizzleCapacitor = <TSchema extends Record<string, unknown>>(db: string, config?: DrizzleConfig<TSchema>) => {
+export const drizzleCapacitor = async <TSchema extends Record<string, unknown>>(db: string, migrations?: Record<string, string>, config?: DrizzleConfig<TSchema>) => {
   const driver = new CapacitorSqliteDriver(db);
-  driver.init().then()
-  let transaction: boolean = true;
-  const migration: MigrationManager = new MigrationManager(driver);
+  console.log('[drizzleCapacitor]')
+  return driver.init().then(() => {
 
-  const instance:SqliteRemoteDatabase<TSchema> = baseDrizzle<TSchema>(capacitorSqliteDriver(driver, transaction), undefined, config);
+    let transaction: boolean = true;
+    const migration: MigrationManager = new MigrationManager(driver, migrations);
 
-  (instance as CapacitorSqliteRemoteDatabase<TSchema>).migration = migration.applyMigrations.bind(migration);
+    const instance:SqliteRemoteDatabase<TSchema> = baseDrizzle<TSchema>(capacitorSqliteDriver(driver, transaction), undefined, config);
 
-  return instance as CapacitorSqliteRemoteDatabase<TSchema>;
+    (instance as CapacitorSqliteRemoteDatabase<TSchema>).migration = migration.applyMigrations.bind(migration);
+
+    return instance as CapacitorSqliteRemoteDatabase<TSchema>;
+
+  });
 }
 

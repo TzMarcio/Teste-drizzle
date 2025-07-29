@@ -12,6 +12,7 @@ export class CapacitorSqliteDriver {
   }
 
   async init(): Promise<void> {
+
     try {
       // Copy database from assets if available
 
@@ -48,9 +49,7 @@ export class CapacitorSqliteDriver {
 
   async query(query: string, params: any[] = []): Promise<any[]> {
     if (!this.connection) {
-      await this.init()
-      await this.query(query, params)
-      // throw new Error('Database connection not initialized');
+      throw new Error('Database connection not initialized');
     }
 
     try {
@@ -65,10 +64,9 @@ export class CapacitorSqliteDriver {
     }
   }
 
-  async execute(query: string, transaction: boolean = false): Promise<void> {
+  async execute(query: string, origem: string, transaction: boolean = false): Promise<void> {
     if (!this.connection) {
-      await this.init()
-      await this.execute(query, transaction);
+      throw new Error('Database connection not initialized');
     }
 
     try {
@@ -131,8 +129,7 @@ export class CapacitorSqliteDriver {
   ): Promise<{ rows: any[] }> {
     if (!this.connection) {
       console.error("invalid connection")
-      await this.init()
-      await this.call(sql, params,method, transaction);
+      throw new Error('Database connection not initialized');
     }
 
     try {

@@ -26,7 +26,7 @@ export class Tab2Page implements OnInit {
 
         await database.migration();
 
-        for(let x = 0; x < 10; x++) {
+        for(let x = 0; x < 1; x++) {
           await database.transaction(async (tx) => {
             console.log("here")
 

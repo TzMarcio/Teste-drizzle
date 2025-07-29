@@ -20,7 +20,7 @@ async function generateEmbbeddedMigration() {
   }
 
   await Bun.write(
-    "src/app/core/database/adapters/migrations.ts",
+    "migration/migrations.ts",
     `export const migrations = ${JSON.stringify(baseObj, null, 2)};`
   );
 
