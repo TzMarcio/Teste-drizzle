@@ -1,7 +1,7 @@
 {
   "migrations": [
     "0000_boring_gateway.sql",
-    "0001_medical_star_brand.sql",
+    "0001_medical_star_brand.sql"
   ],
   "updatedAt": "2025-01-29T17:00:00.000Z"
 }
