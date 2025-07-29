@@ -1,4 +1,5 @@
 import {CapacitorSQLite, SQLiteConnection, SQLiteDBConnection} from '@capacitor-community/sqlite';
+import {map} from "../../util/util";
 
 export class CapacitorSqliteDriver {
   private connection: SQLiteDBConnection | null = null;
@@ -110,7 +111,7 @@ export class CapacitorSqliteDriver {
     }
 
     try {
-      const formattedQueries = queries.map((query) => ({
+      const formattedQueries = map(queries, (query) => ({
         statement: query,
         values: []
       }));
