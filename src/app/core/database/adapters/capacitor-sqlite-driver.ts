@@ -88,17 +88,15 @@ export class CapacitorSqliteDriver {
     }
 
     try {
-
-      if(query.trim().toLowerCase().includes('begin')) {
+      const lowerCasedQuery = query.trim().toLowerCase()
+      if(lowerCasedQuery.includes('begin')) {
         return await this.connection.beginTransaction()
-      }else if(query.trim().toLowerCase().includes('commit')) {
+      }else if(lowerCasedQuery.includes('commit')) {
         return await this.connection.commitTransaction()
-      }else if(query.trim().toLowerCase().includes('rollback')) {
+      }else if(lowerCasedQuery.includes('rollback')) {
         return await this.connection.rollbackTransaction();
       }else {
-
         return await this.connection.run(query, params, transaction);
-
       }
     } catch (error) {
       console.error('Run failed:', query, params, error);
