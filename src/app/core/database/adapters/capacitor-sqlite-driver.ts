@@ -1,6 +1,9 @@
-import {CapacitorSQLite, SQLiteConnection, SQLiteDBConnection} from '@capacitor-community/sqlite';
-import {map} from "../../util/util";
+import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite';
+import { map } from "../../util/util";
 
+/**
+ * Driver for SQLite database operations using Capacitor
+ */
 export class CapacitorSqliteDriver {
   private connection: SQLiteDBConnection | null = null;
   private readonly sqlite: SQLiteConnection;
@@ -11,52 +14,61 @@ export class CapacitorSqliteDriver {
     this.dbName = dbName;
   }
 
-  async init(): Promise<void> {
+  /**
+   * Ensures database connection is available
+   * @param operation - Name of the operation requiring connection
+   * @throws Error if connection is not initialized
+   */
+  private ensureConnection(operation: string = 'operation'): SQLiteDBConnection {
+    if (!this.connection) {
+      throw new Error(`Database connection not initialized for ${operation}`);
+    }
+    return this.connection;
+  }
 
+  /**
+   * Initializes the database connection
+   */
+  async init(): Promise<void> {
     try {
       // Copy database from assets if available
-
       await this.sqlite.copyFromAssets().catch((err) => {
         console.warn('⚠️ copyFromAssets failed:', err.message);
       });
 
       // Check connection consistency
       const { result: isConsistent } = await this.sqlite.checkConnectionsConsistency();
-      console.log('🔍 Checking connection consistency:', isConsistent);
 
       if (!isConsistent) {
-        console.log('🔧 Inconsistent connection. Creating new connection...');
         await this.sqlite.createConnection(this.dbName, false, 'no-encryption', 1, false);
       }
 
       // Retrieve and open connection
       this.connection = await this.sqlite.retrieveConnection(this.dbName, false);
       if (!this.connection) {
-        throw new Error(`❌ Failed to retrieve connection: ${this.dbName}`);
+        throw new Error(`Failed to retrieve connection: ${this.dbName}`);
       }
-      console.log(this.connection)
+
       await this.connection.open();
 
       // Enable WAL mode for better performance
       await this.connection.query('PRAGMA journal_mode=WAL;');
-
-      console.log('✅ Database connection initialized:', this.dbName);
     } catch (error) {
-      console.error('❌ Error initializing database:', error, this.dbName);
+      console.error('Error initializing database:', error);
       throw error;
     }
   }
 
+  /**
+   * Executes a SQL query and returns the results
+   * @param query - SQL query to execute
+   * @param params - Parameters for the query
+   * @returns Query results as an array
+   */
   async query(query: string, params: any[] = []): Promise<any[]> {
-    if (!this.connection) {
-      throw new Error('Database connection not initialized');
-    }
-
     try {
-      if(!this.connection){
-        throw new Error('Database connection not initialized at Query');
-      }
-      const result = await this.connection.query(query, params);
+      const conn = this.ensureConnection('query');
+      const result = await conn.query(query, params);
       return result.values || [];
     } catch (error) {
       console.error('Query failed:', query, params, error);
@@ -64,38 +76,41 @@ export class CapacitorSqliteDriver {
     }
   }
 
-  async execute(query: string, origem: string, transaction: boolean = false): Promise<void> {
-    if (!this.connection) {
-      throw new Error('Database connection not initialized');
-    }
-
+  /**
+   * Executes a SQL statement
+   * @param query - SQL statement to execute
+   * @param transaction - Whether to execute in a transaction
+   */
+  async execute(query: string, transaction: boolean = false): Promise<void> {
     try {
-      if(!this.connection) {
-        throw new Error('Database connection not initialized at Execute');
-      }
-
-      await this.connection.execute(query, transaction);
+      const conn = this.ensureConnection('execute');
+      await conn.execute(query, transaction);
     } catch (error) {
       console.error('Execute failed:', query, error);
       throw error;
     }
   }
 
+  /**
+   * Runs a SQL statement with parameters
+   * @param query - SQL statement to run
+   * @param params - Parameters for the statement
+   * @param transaction - Whether to run in a transaction
+   * @returns Result of the operation
+   */
   async run(query: string, params: any[] = [], transaction: boolean = false): Promise<any> {
-    if (!this.connection) {
-      throw new Error('Database connection not initialized');
-    }
-
     try {
-      const lowerCasedQuery = query.trim().toLowerCase()
-      if(lowerCasedQuery.includes('begin')) {
-        return await this.connection.beginTransaction()
-      }else if(lowerCasedQuery.includes('commit')) {
-        return await this.connection.commitTransaction()
-      }else if(lowerCasedQuery.includes('rollback')) {
-        return await this.connection.rollbackTransaction();
-      }else {
-        return await this.connection.run(query, params, transaction);
+      const conn = this.ensureConnection('run');
+      const lowerCasedQuery = query.trim().toLowerCase();
+
+      if (lowerCasedQuery.includes('begin')) {
+        return await conn.beginTransaction();
+      } else if (lowerCasedQuery.includes('commit')) {
+        return await conn.commitTransaction();
+      } else if (lowerCasedQuery.includes('rollback')) {
+        return await conn.rollbackTransaction();
+      } else {
+        return await conn.run(query, params, transaction);
       }
     } catch (error) {
       console.error('Run failed:', query, params, error);
@@ -103,47 +118,45 @@ export class CapacitorSqliteDriver {
     }
   }
 
+  /**
+   * Executes multiple SQL statements in batch
+   * @param queries - Array of SQL statements to execute
+   */
   async batch(queries: string[]): Promise<void> {
-    if (!this.connection) {
-      throw new Error('Database connection not initialized');
-    }
-
     try {
+      const conn = this.ensureConnection('batch');
       const formattedQueries = map(queries, (query) => ({
         statement: query,
         values: []
       }));
-      await this.connection.executeSet(formattedQueries);
+      await conn.executeSet(formattedQueries);
     } catch (error) {
       console.error('Batch failed:', queries, error);
       throw error;
     }
   }
 
-  // Main method called by Drizzle proxy
+  /**
+   * Main method called by Drizzle proxy
+   * @param sql - SQL statement to execute
+   * @param params - Parameters for the statement
+   * @param method - Method to use (run, all, values, get)
+   * @param transaction - Whether to execute in a transaction
+   * @returns Result rows
+   */
   async call(
     sql: string,
     params: any[],
     method: "run" | "all" | "values" | "get",
     transaction: boolean = false
   ): Promise<{ rows: any[] }> {
-    if (!this.connection) {
-      console.error("invalid connection")
-      throw new Error('Database connection not initialized');
-    }
-
     try {
-
-
-      if(!this.connection) {
-        throw new Error('Database connection not initialized at call');
-      }
+      this.ensureConnection('call');
 
       switch (method) {
-        case "run": {
+        case "run":
           await this.run(sql, params, transaction);
           return { rows: [] };
-        }
 
         case "all": {
           const result = await this.query(sql, params);
@@ -160,9 +173,7 @@ export class CapacitorSqliteDriver {
         case "get": {
           const result = await this.query(sql, params);
           const firstRow = result?.[0];
-          return {
-            rows: firstRow ? [firstRow] : []
-          };
+          return { rows: firstRow ? [firstRow] : [] };
         }
 
         default:
@@ -174,13 +185,15 @@ export class CapacitorSqliteDriver {
     }
   }
 
+  /**
+   * Closes the database connection
+   */
   async close(): Promise<void> {
     if (this.connection) {
       try {
         await this.connection.close();
         await this.sqlite.closeConnection(this.dbName, false);
         this.connection = null;
-        console.log('🔒 Database connection closed');
       } catch (error) {
         console.error('Error closing connection:', error);
         throw error;

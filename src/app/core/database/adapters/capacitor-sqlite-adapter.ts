@@ -1,59 +1,140 @@
-import {AsyncRemoteCallback, drizzle as baseDrizzle} from 'drizzle-orm/sqlite-proxy';
-import {CapacitorSqliteDriver} from "./capacitor-sqlite-driver";
-import {DrizzleConfig} from "drizzle-orm";
-import {MigrationManager} from "./migration-manager";
-import {SqliteRemoteDatabase} from "drizzle-orm/sqlite-proxy/driver";
+import { AsyncRemoteCallback, drizzle as baseDrizzle } from 'drizzle-orm/sqlite-proxy';
+import { CapacitorSqliteDriver } from "./capacitor-sqlite-driver";
+import { DrizzleConfig } from "drizzle-orm";
+import { MigrationManager } from "./migration-manager";
+import { SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy/driver";
 
-type Listener = () => void;
+/**
+ * Callback function type for database availability notifications
+ */
+type Listener = (ready: boolean) => void;
 
-export declare class CapacitorSqliteRemoteDatabase<TSchema extends Record<string, unknown> = Record<string, never>> extends SqliteRemoteDatabase<TSchema> {
-  onAvailiable: (callback: Listener) => void;
-  isAvailiable: boolean;
+/**
+ * Extended SQLite database interface with availability tracking
+ */
+export interface CapacitorSqliteRemoteDatabase<TSchema extends Record<string, unknown> = Record<string, never>> extends SqliteRemoteDatabase<TSchema> {
+  /**
+   * Register a callback to be notified when database becomes available
+   */
+  onAvailable: (callback: Listener) => void;
+
+  /**
+   * Current availability state of the database
+   */
+  isAvailable: boolean;
 }
 
-export function capacitorSqliteDriver(driver: CapacitorSqliteDriver, transaction: boolean): AsyncRemoteCallback {
-  return async (sql, params, method ) => {
+/**
+ * SQL command types for transaction state management
+ */
+enum SqlCommandType {
+  BEGIN,
+  COMMIT_OR_ROLLBACK,
+  OTHER
+}
 
-    if(sql.trim().toLowerCase().includes('commit') || sql.trim().toLowerCase().includes('rollback')) {
-      transaction = true;
+/**
+ * Detects the type of SQL command for transaction management
+ *
+ * @param sql - SQL command to analyze
+ * @returns The detected command type
+ */
+function detectSqlCommandType(sql: string): SqlCommandType {
+  const normalizedSql = sql.trim().toLowerCase();
+
+  if (normalizedSql.startsWith('begin')) {
+    return SqlCommandType.BEGIN;
+  }
+
+  if (normalizedSql.startsWith('commit') || normalizedSql.startsWith('rollback')) {
+    return SqlCommandType.COMMIT_OR_ROLLBACK;
+  }
+
+  return SqlCommandType.OTHER;
+}
+
+/**
+ * Creates a SQLite driver callback for Drizzle ORM
+ *
+ * @param driver - The Capacitor SQLite driver instance
+ * @param initialTransactionState - Initial transaction state
+ * @returns Async callback function for Drizzle ORM
+ */
+export function capacitorSqliteDriver(
+  driver: CapacitorSqliteDriver,
+  initialTransactionState: boolean = true
+): AsyncRemoteCallback {
+  // Use a closure to maintain transaction state
+  let transactionState = initialTransactionState;
+
+  return async (sql, params, method) => {
+    // Update transaction state based on SQL command
+    const commandType = detectSqlCommandType(sql);
+
+    if (commandType === SqlCommandType.COMMIT_OR_ROLLBACK) {
+      transactionState = true;
     }
 
-    const result = driver.call(sql, params, method, transaction)
+    // Execute the SQL command
+    const result = driver.call(sql, params, method, transactionState);
 
-    if(sql.trim().toLowerCase().includes('begin')) {
-      transaction = false;
+    if (commandType === SqlCommandType.BEGIN) {
+      transactionState = false;
     }
 
     return result;
   };
 }
 
-export const drizzleCapacitor = <TSchema extends Record<string, unknown>>(db: string, migrations?: Record<string, string>, config?: DrizzleConfig<TSchema>) => {
+/**
+ * Creates a Drizzle ORM instance connected to a Capacitor SQLite database
+ *
+ * @param db - Database name
+ * @param migrations - Optional database migrations
+ * @param config - Optional Drizzle configuration
+ * @returns A configured database instance
+ */
+export function drizzleCapacitor<TSchema extends Record<string, unknown>>(
+  db: string,
+  migrations?: Record<string, string>,
+  config?: DrizzleConfig<TSchema>
+): CapacitorSqliteRemoteDatabase<TSchema> {
+  // Initialize the driver and migration manager
   const driver = new CapacitorSqliteDriver(db);
+  const migration = new MigrationManager(driver, migrations);
 
-  const migration: MigrationManager = new MigrationManager(driver, migrations);
+  // Create the database instance
+  const instance = baseDrizzle<TSchema>(
+    capacitorSqliteDriver(driver, true),
+    undefined,
+    config
+  ) as CapacitorSqliteRemoteDatabase<TSchema>;
 
-  let transaction: boolean = true;
+  // Set up availability tracking
+  const listeners: Listener[] = [];
+  instance.isAvailable = false;
 
-  const instance:SqliteRemoteDatabase<TSchema> = baseDrizzle<TSchema>(capacitorSqliteDriver(driver, transaction), undefined, config);
-
-  let readyListener: Listener = () => {};
-
-  (instance as CapacitorSqliteRemoteDatabase<TSchema>).onAvailiable = () => {
-    readyListener();
+  // Define the onAvailable method
+  instance.onAvailable = (callback: Listener) => {
+    // Immediately notify with current state
+    callback(instance.isAvailable);
+    // Register for future updates
+    listeners.push(callback);
   };
 
+  // Initialize the database and apply migrations
   driver.init().then(async () => {
     await migration.applyMigrations();
-    (instance as CapacitorSqliteRemoteDatabase<TSchema>).isAvailiable = true;
-    readyListener();
+
+    // Update availability state and notify listeners
+    instance.isAvailable = true;
+    for (const listener of listeners) {
+      listener(instance.isAvailable);
+    }
   });
 
-  (instance as CapacitorSqliteRemoteDatabase<TSchema>).onAvailiable = (callback: Listener) => {
-    readyListener = callback;
-  };
-
-  return instance as CapacitorSqliteRemoteDatabase<TSchema>;
-
+  return instance;
 }
+
+
 

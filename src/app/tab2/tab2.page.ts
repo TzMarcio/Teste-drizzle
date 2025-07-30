@@ -24,8 +24,10 @@ export class Tab2Page implements OnInit {
 
       setTimeout(async () => {
 
-        database.onAvailiable(async () => {
-          console.log('INICIADO', database.isAvailiable);
+        database.onAvailable(async () => {
+          console.log('INICIADO', database.isAvailable);
+
+          if(!database.isAvailable) return;
 
           for(let x = 0; x < 1; x++) {
             await database.transaction(async (tx) => {
